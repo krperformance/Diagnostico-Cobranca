@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BANCOPA · Diagnóstico Operacional de Cobrança</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d10;
+    --panel:#13171c;
+    --panel-2:#171c22;
+    --line:#272d35;
+    --ink:#e8ecf1;
+    --muted:#8a94a3;
+    --dim:#5c6675;
+    --crit:#ff4d52;
+    --crit-dim:#3a1416;
+    --alto:#ffa62b;
+    --alto-dim:#3a2810;
+    --ok:#27e3a0;
+    --ok-dim:#0e3327;
+    --blue:#4aa8ff;
+    --blue-dim:#0f2438;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Libre Franklin',sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* grid + grain atmosphere */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(var(--line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:46px 46px;
+    opacity:.18;
+    mask-image:radial-gradient(circle at 50% 0%,#000 0%,transparent 75%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 24px}
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  /* ── NAV ── */
+  nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(11,13,16,.82);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-in{max-width:1120px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{font-family:'Fraunces',serif;font-weight:600;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--crit);box-shadow:0 0 12px var(--crit);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .nav-links{display:flex;gap:22px;font-size:13px}
+  .nav-links a{color:var(--muted);text-decoration:none;transition:color .2s;font-family:'IBM Plex Mono',monospace}
+  .nav-links a:hover{color:var(--ink)}
+  @media(max-width:720px){.nav-links{display:none}}
+
+  /* ── HERO ── */
+  header{padding:90px 0 60px;position:relative}
+  .tag{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--crit);
+    border:1px solid var(--crit);padding:5px 12px;border-radius:100px;display:inline-block;
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:26px;
+    background:var(--crit-dim);
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(42px,8vw,86px);line-height:1.0;letter-spacing:-.02em;margin-bottom:24px;
+  }
+  h1 .stroke{
+    font-style:italic;font-weight:500;color:var(--muted);
+  }
+  .lede{font-size:clamp(16px,2.4vw,20px);color:var(--muted);max-width:620px;margin-bottom:36px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px}
+  .meta{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);
+    border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:8px;
+  }
+  .meta b{color:var(--ink);font-weight:500}
+
+  /* ── STATS ── */
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:54px 0 10px;
+  }
+  @media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--panel);padding:26px 22px}
+  .stat .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(28px,4vw,40px);letter-spacing:-.01em;line-height:1}
+  .stat .n.crit{color:var(--crit)} .stat .n.alto{color:var(--alto)} .stat .n.blue{color:var(--blue)}
+  .stat .l{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;text-transform:uppercase;letter-spacing:.06em}
+
+  /* ── SECTION ── */
+  section{padding:64px 0;border-top:1px solid var(--line);margin-top:30px}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:40px}
+  .sec-num{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--crit)}
+  .sec-title{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(26px,4vw,38px);letter-spacing:-.01em}
+  .sec-sub{color:var(--muted);max-width:640px;margin:-26px 0 38px;font-size:15px}
+
+  /* ── PROBLEM CARDS ── */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
+    display:flex;flex-direction:column;
+  }
+  .card:hover{transform:translateY(-4px);border-color:var(--dim);box-shadow:0 18px 40px -20px rgba(0,0,0,.8)}
+  .card.full{grid-column:1/-1}
+  .card-top{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+  .card-id{
+    font-family:'Fraunces',serif;font-weight:600;font-size:26px;
+    display:flex;align-items:center;justify-content:center;width:64px;flex-shrink:0;
+    border-right:1px solid var(--line);
+  }
+  .card.crit .card-id{background:var(--crit-dim);color:var(--crit)}
+  .card.alto .card-id{background:var(--alto-dim);color:var(--alto)}
+  .card-ttl{padding:16px 18px;font-family:'Fraunces',serif;font-weight:700;font-size:17px;line-height:1.25;flex:1;display:flex;align-items:center}
+  .sev{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;
+    align-self:flex-start;margin:14px 14px 0 0;padding:4px 9px;border-radius:6px;flex-shrink:0;
+  }
+  .sev.crit{background:var(--crit);color:#180404}
+  .sev.alto{background:var(--alto);color:#1c1304}
+  .card-body{padding:18px;display:flex;flex-direction:column;gap:16px;flex:1}
+  .blk .blk-l{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .blk-l::before{content:"";width:14px;height:1px;background:var(--dim)}
+  .blk ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .blk li{font-size:14px;color:var(--muted);padding-left:16px;position:relative}
+  .blk li::before{content:"▸";position:absolute;left:0;color:var(--dim)}
+  .blk.sol{background:var(--ok-dim);margin:-2px;padding:16px;border-radius:10px;border:1px solid rgba(39,227,160,.16)}
+  .blk.sol .blk-l{color:var(--ok)} .blk.sol .blk-l::before{background:var(--ok)}
+  .blk.sol li{color:#bdf5e0} .blk.sol li::before{color:var(--ok)}
+  .blk.imp li{color:#ffd0b0;font-style:italic}
+  .blk.imp .blk-l{color:var(--alto)}
+  code,.store{
+    font-family:'IBM Plex Mono',monospace;font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line);padding:1px 6px;border-radius:5px;color:var(--ink);white-space:nowrap;
+  }
+
+  /* ── FLOW ── */
+  .flow{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+  .flow-row{
+    display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:18px 20px;position:relative;
+  }
+  .flow-phase{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);width:70px;flex-shrink:0}
+  .flow-main{flex:1}
+  .flow-main .who{font-family:'Fraunces',serif;font-weight:700;font-size:16px;margin-bottom:3px}
+  .flow-main .desc{font-size:13.5px;color:var(--muted)}
+  .flow-row.f1{border-left:3px solid var(--blue)}
+  .flow-row.f2{border-left:3px solid var(--alto)}
+  .flow-row.f3{border-left:3px solid var(--ok)}
+  .flow-row.f4{border-left:3px solid var(--crit)}
+  .flow-arrow{text-align:center;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:12px;margin:-6px 0}
+  .stores-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:30px}
+  @media(max-width:720px){.stores-grid{grid-template-columns:1fr}}
+  .store-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .store-card .sx{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ok);margin-bottom:8px}
+  .store-card .sn{font-family:'Fraunces',serif;font-weight:700;font-size:17px;margin-bottom:6px}
+  .store-card .sd{font-size:13px;color:var(--muted)}
+
+
+  /* ── FOOTER ── */
+  footer{border-top:1px solid var(--line);padding:50px 0 60px;margin-top:40px}
+  .foot-in{display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;align-items:center}
+  .foot-in .mono{font-size:12px;color:var(--dim)}
+  .disc{margin-top:28px;padding:16px 18px;border:1px solid var(--alto-dim);background:rgba(255,166,43,.05);border-radius:10px;font-size:12.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;line-height:1.7}
+  .disc b{color:var(--alto)}
+
+  /* reveal */
+  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <div class="brand"><span class="dot"></span>BANCOPA<span style="color:var(--dim);font-weight:400" class="mono"> / diag</span></div>
+    <div class="nav-links">
+      <a href="#problemas">problemas</a>
+      <a href="#lojas">novas_lojas</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap">
+    <span class="tag rv">● Diagnóstico Operacional · Sistema de Cobrança</span>
+    <h1 class="rv">Diagnóstico<br><span class="stroke">de Cobrança</span></h1>
+    <p class="lede rv">Mapeamento das falhas sistêmicas entre o Agaemetec e o sistema de campanha — impacto direto em receita, performance e segurança jurídica da operação.</p>
+    <div class="meta-row rv">
+      <span class="meta">UNIDADES <b>Dumas · Tatuapé</b></span>
+      <span class="meta">EQUIPE <b>BANCOPA</b></span>
+      <span class="meta">STATUS <b style="color:var(--crit)">Ação Imediata</b></span>
+      <span class="meta">VERSÃO <b>4.0</b></span>
+    </div>
+
+    <div class="stats rv">
+      <div class="stat"><div class="n crit">9</div><div class="l">Problemas mapeados</div></div>
+      <div class="stat"><div class="n alto">158k+</div><div class="l">Devedores parados</div></div>
+      <div class="stat"><div class="n blue">6,1M</div><div class="l">Registros no sistema</div></div>
+      <div class="stat"><div class="n">13</div><div class="l">Lojas BANCOPA</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="problemas">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-num">01</span><h2 class="sec-title">Problemas Identificados</h2></div>
+    <p class="sec-sub rv">Cada falha foi confirmada com evidência em sistema. Classificação por severidade e ação corretiva proposta.</p>
+
+    <div class="grid">
+
+      <div class="card crit rv">
+        <div class="card-top"><div class="card-id">1</div><div class="card-ttl">Base invisível no sistema de campanha</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>A loja <span class="store">TERMOASSINADO</span> exibe só 152 CPFs na campanha, mas o Agaemetec registra 3.302.</li>
+            <li>Mesmo descompasso em <span class="store">TERMONAOASSINADO</span> — 119 contatos vs 4.929 CPFs reais.</li>
+            <li>Supervisão não enxerga o volume real para planejar a operação.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Sincronizar contagem da campanha com o Agaemetec.</li>
+            <li>Relatório diário de reconciliação por loja. <b style="color:var(--ok)">Prazo: 24h</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card crit rv">
+        <div class="card-top"><div class="card-id">2</div><div class="card-ttl">Fluxo de quebra não comunica os sistemas</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>O Agaemetec migra a loja; o sistema de campanha não acompanha.</li>
+            <li>Devedor continua na campanha do Financeiro/Assessorias após ir ao Jurídico.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Saída do Agaemetec na mesma proporção do ciclo da campanha (1x/mês).</li>
+            <li>Integração automática entre os dois sistemas. <b style="color:var(--ok)">Prazo: 15d</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card crit rv">
+        <div class="card-top"><div class="card-id">3</div><div class="card-ttl">Devedor no Jurídico recebendo SMS do Financeiro</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>Após migrar ao Jurídico, devedor recebe SMS de "desconto" do Financeiro.</li>
+            <li>Mensagem errada esfria a gravidade da fase jurídica.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Suspender SMS do Financeiro para CPFs já no Jurídico.</li>
+            <li>Aumentar período nas assessorias p/ casar com o ciclo da campanha.</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card alto rv">
+        <div class="card-top"><div class="card-id">4</div><div class="card-ttl">Faltam lojas para baldes quebrados</div><span class="sev alto">ALTO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>Nos 7 dias de inadimplência não há loja ativa para cobrar.</li>
+            <li>Quem regulariza volta para a base errada.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Criar <span class="store">Financeiro Inadimplente</span> e <span class="store">Financeiro Recuperado</span>.</li>
+            <li>Fluxo automático de migração no Agaemetec. <b style="color:var(--ok)">Prazo: 72h</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card alto rv">
+        <div class="card-top"><div class="card-id">5</div><div class="card-ttl">Esteira entre assessorias quebrada</div><span class="sev alto">ALTO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>CPF ativo na campanha do Financeiro não aparece para o operador do Jurídico.</li>
+            <li>Devedor "perdido" entre as lojas — sem contato, sem acordo.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Esteira contínua: sair de uma loja aciona a entrada na próxima.</li>
+            <li>Flag de "campanha ativa em outra loja". <b style="color:var(--ok)">Prazo: 24h</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card crit rv">
+        <div class="card-top"><div class="card-id">6</div><div class="card-ttl">Clientes QUEBRAS cancelados e represados</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>Contratos da loja <span class="store">QUEBRAS</span> cancelados em 11/09/2025.</li>
+            <li>158.510 clientes parados em <span class="store">RETIRADO_ELITE</span> — zero cobrança.</li>
+          </ul></div>
+          <div class="blk imp"><div class="blk-l">Impacto</div><ul>
+            <li>Receita travada — equipe penalizada por falha que não causou.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Reativar e redirecionar ao <span class="store">CAEJUD</span>. <b style="color:var(--ok)">Prazo: HOJE</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card alto rv">
+        <div class="card-top"><div class="card-id">7</div><div class="card-ttl">Liquidados, Superdívida e Agrupamento na ELITE</div><span class="sev alto">ALTO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>Perfis distintos jogados juntos em <span class="store">RETIRADO_ELITE</span>.</li>
+            <li>Contratos de <span class="store">QUEBRAS</span> duplicados como "H".</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Separar perfis e reabrir <span class="store">AGRUPAMENTO</span> para a BANCOPA.</li>
+            <li>Corrigir a duplicação. <b style="color:var(--ok)">Prazo: 24h</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card crit rv">
+        <div class="card-top"><div class="card-id">8</div><div class="card-ttl">1M+ nomes em lojas paradas</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body">
+          <div class="blk"><div class="blk-l">Problema</div><ul>
+            <li>Lojas sem campanha: <span class="store">CAEJUDCOB</span>, <span class="store">XBANCORP</span>, <span class="store">XCOPACOB</span>.</li>
+            <li>Carteira massiva sem nenhuma ação de cobrança.</li>
+          </ul></div>
+          <div class="blk sol"><div class="blk-l">Solução</div><ul>
+            <li>Auditoria das 13 lojas + ativação escalonada por volume.</li>
+            <li>Priorizar as 3 maiores. <b style="color:var(--ok)">Prazo: 7d</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card crit full rv">
+        <div class="card-top"><div class="card-id">9</div><div class="card-ttl">⚠ GRAVE — Devedores INATIVOS com histórico jurídico transferidos e duplicados</div><span class="sev crit">CRÍTICO</span></div>
+        <div class="card-body" style="flex-direction:row;flex-wrap:wrap;gap:18px">
+          <div class="blk" style="flex:1;min-width:260px"><div class="blk-l">Problema</div><ul>
+            <li>Devedores da loja <span class="store">INATIVOS</span> — com problemas jurídicos graves anteriores, incluindo devoluções — foram transferidos à ELITE.</li>
+            <li>Contratos duplicados com prefixo <span class="store">ELITE-</span> gerando múltiplos registros do mesmo cliente.</li>
+          </ul></div>
+          <div class="blk imp" style="flex:1;min-width:240px"><div class="blk-l">Impacto</div><ul>
+            <li>Risco jurídico ativo: reativar cobrança sem revisão pode gerar novas devoluções e passivos.</li>
+            <li>Duplicação corrompe a base — débitos e acordos inválidos.</li>
+          </ul></div>
+          <div class="blk sol" style="flex:1;min-width:240px"><div class="blk-l">Solução</div><ul>
+            <li>Bloquear qualquer cobrança até revisão jurídica.</li>
+            <li>Mapear duplicações <span class="store">ELITE-</span> e revisar caso a caso. <b style="color:var(--ok)">Prazo: imediato</b></li>
+          </ul></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="lojas">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="sec-num">02</span><h2 class="sec-title">Estrutura das Novas Lojas</h2></div>
+    <p class="sec-sub rv">Especificação oficial da esteira de inadimplência — 3 novas lojas, regras de envio de lote e fluxo de transição com responsáveis.</p>
+
+    <div class="stores-grid">
+      <div class="store-card rv"><div class="sx mono">LOJA 01</div><div class="sn">Financeiro Inadimplente</div><div class="sd">Baldes quebrados após 7 dias. Campanha pré-jurídica, tom mais incisivo.</div></div>
+      <div class="store-card rv"><div class="sx mono">LOJA 02</div><div class="sn">Inadimplente Liquidado</div><div class="sd">Devedor que quitou o valor estando inadimplente.</div></div>
+      <div class="store-card rv"><div class="sx mono">LOJA 03</div><div class="sn">Financeiro Recuperado</div><div class="sd">Cliente recuperado pela operação após a quebra.</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-row f1 rv"><div class="flow-phase">FASE 1</div><div class="flow-main"><div class="who">Robert · Financeiro</div><div class="desc">Devedor inicia em <span class="store">Financeiro Adimplente</span>. Em caso de quebra, 7 dias para acionar e recuperar.</div></div></div>
+      <div class="flow-arrow rv">↓ &nbsp;7 dias sem sucesso</div>
+      <div class="flow-row f2 rv"><div class="flow-phase">FASE 2</div><div class="flow-main"><div class="who">Cleide · supervisora da Assessoria / Érica · operadora</div><div class="desc">Lead migra automaticamente para <span class="store">Financeiro Inadimplente</span>.</div></div></div>
+      <div class="flow-arrow rv">↓ &nbsp;desfecho</div>
+      <div class="flow-row f3 rv"><div class="flow-phase">FASE 3</div><div class="flow-main"><div class="who">Desfecho Positivo</div><div class="desc">Recuperou → <span class="store">Financeiro Recuperado</span> · Quitou → <span class="store">Inadimplente Liquidado</span>.</div></div></div>
+      <div class="flow-row f4 rv"><div class="flow-phase">FASE 4</div><div class="flow-main"><div class="who">Desfecho Negativo</div><div class="desc">Sem recuperação em 7 dias → esteira de <span class="store">Débito Jurídico</span>.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-in">
+      <div class="brand"><span class="dot"></span>BANCOPA<span style="color:var(--dim);font-weight:400" class="mono"> / diag</span></div>
+      <div class="mono">Equipe BANCOPA · Unidades Dumas e Tatuapé · Diagnóstico v4.0</div>
+    </div>
+    <div class="disc">
+      <b>// AVISO DE PRIVACIDADE —</b> Este documento público não contém dados pessoais de devedores (nomes, CPFs ou prints do sistema). As evidências com dados sensíveis circulam apenas em documentos internos, conforme a LGPD.
+    </div>
+  </div>
+</footer>
+
+<script>
+  // staggered reveal on scroll
+  const rv=document.querySelectorAll('.rv');
+  const io=new IntersectionObserver((es)=>{
+    es.forEach((e,i)=>{ if(e.isIntersecting){ setTimeout(()=>e.target.classList.add('in'), (i%6)*70); io.unobserve(e.target);} });
+  },{threshold:.12});
+  rv.forEach(el=>io.observe(el));
+  // hero items reveal immediately
+  document.querySelectorAll('header .rv').forEach((el,i)=>setTimeout(()=>el.classList.add('in'),120+i*90));
+</script>
+</body>
+</html>
